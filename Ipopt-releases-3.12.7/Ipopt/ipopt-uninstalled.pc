@@ -1,0 +1,10 @@
+prefix=/Users/austen/Downloads/Ipopt-releases-3.12.7
+libdir=/Users/austen/Downloads/Ipopt-releases-3.12.7/Ipopt/src/Interfaces
+
+Name: IPOPT
+Description: Interior Point Optimizer
+URL: https://projects.coin-or.org/Ipopt
+Version: 3.12.7
+Libs: ${libdir}/libipopt.la -framework Accelerate -framework Accelerate -lm  -ldl
+Cflags: -I/Users/austen/Downloads/Ipopt-releases-3.12.7/Ipopt/src/Interfaces -I/Users/austen/Downloads/Ipopt-releases-3.12.7/Ipopt/src/Common -I/Users/austen/Downloads/Ipopt-releases-3.12.7/Ipopt/src/LinAlg -I/Users/austen/Downloads/Ipopt-releases-3.12.7/Ipopt/src/Algorithm -I/Users/austen/Downloads/Ipopt-releases-3.12.7/Ipopt/src/contrib/CGPenalty -I/Users/austen/Downloads/Ipopt-releases-3.12.7/Ipopt/src/contrib/LinearSolverLoader -I/Users/austen/Downloads/Ipopt-releases-3.12.7/Ipopt/src/Common
+Requires: 
