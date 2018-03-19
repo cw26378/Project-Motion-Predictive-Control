@@ -91,7 +91,12 @@ int main() {
           double py = j[1]["y"];
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
-
+          //previous delta and a will be used for dealing with latency
+          double delta_pre = j[1]["steering_angle"];
+          double a_pre = j[1]["throttle"];
+          //debug only
+          std::cout << "previous state: px = "<< px <<", py = "<< py << std::endl;
+          std::cout << "previous delta_pre = "<< delta_pre <<", a_pre = "<< a_pre<< std::endl;
           /*
           * TODO: Calculate steering angle and throttle using MPC.
           *
@@ -100,7 +105,7 @@ int main() {
           */
           // This is the length from front to CoG that has a similar radius.
           const double Lf = 2.67;
-          
+          const int time_latency = 100; // latency in ms
           // coordinates transformation between map and car: shift and rotate
           for (int i = 0; i< ptsx.size(); i++){
             //shift origin to (px, py)
@@ -123,7 +128,19 @@ int main() {
           
           Eigen::VectorXd x0(6);
           x0 << 0, 0, 0, v, cte, epsi;
-
+          
+          // dealing with latency
+          if (time_latency > 0){
+            double dt_lat = time_latency / 1000.0; // latency in seconds
+            // in car coordinate psi = 0,  (only move along x-directin)
+            x0[0] += v * dt_lat;
+            // x0[1] remains...
+            x0[2] -= v * delta_pre * dt_lat / Lf;
+            x0[3] += a_pre * dt_lat;
+            // cte or x0[4] remains...
+            x0[4] += v * sin(epsi) * dt_lat;
+            x0[5] -= v * delta_pre * dt_lat / Lf;
+          }
           auto result_var = mpc.Solve(x0, coeffs);
           double steer_value = result_var[0];
           double throttle_value = result_var[1];
@@ -180,7 +197,7 @@ int main() {
           //
           // NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE
           // SUBMITTING.
-          this_thread::sleep_for(chrono::milliseconds(100));//100
+          this_thread::sleep_for(chrono::milliseconds(time_latency));//100
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
       } else {
