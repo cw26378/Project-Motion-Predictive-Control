@@ -24,7 +24,9 @@ const double Lf = 2.67;
 //ref setting for cost function
 double ref_cte = 0.0;
 double ref_epsi = 0.0;
-double ref_v = 60;
+
+// convert ref_v from miles per hour to m/s
+double ref_v = 60 * 1600 / 3600;;
 
 // single vector includes state variables of all N states of (x,y,psi,v, cte,epsi, delta, a)
 size_t x_start = 0;
@@ -53,13 +55,14 @@ class FG_eval {
     //fg[0] is the cost
     fg[0] = 0;
     //weight of different terms in the cost function;
-    double weight_cte = 5000.0;
-    double weight_epsi = 2000.0;
-    double weight_v = 1.0;
-    double weight_delta = 800.0;
-    double weight_a = 50.0;
-    double weight_delta_step = 1000.0;
-    double weight_a_step = 10.0;
+    double weight_cte = 600.0;//3000
+    double weight_epsi = 160.0; //1600
+    double weight_v = 2.0; //20
+    double weight_delta = 100.0; //1000
+    double weight_a = 5.0; //50
+    double wieght_cross = 100.0; //700
+    double weight_delta_step = 100.0; //1000
+    double weight_a_step = 1.0; //10
     
     // basic cost function:
     for (int t = 0; t < N; t++){
@@ -72,6 +75,7 @@ class FG_eval {
     for (int t = 0; t < N - 1; t++) {
       fg[0] += weight_delta * CppAD::pow(vars[delta_start + t], 2);
       fg[0] += weight_a * CppAD::pow(vars[a_start + t], 2);
+      fg[0] += wieght_cross * CppAD::pow(vars[delta_start + t] * vars[v_start + t], 2);
     }
     // Minimize the value gap between sequential actuations.
     for (int t = 0; t < N - 2; t++) {

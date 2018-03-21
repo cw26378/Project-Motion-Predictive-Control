@@ -91,11 +91,13 @@ int main() {
           double py = j[1]["y"];
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
+           v = v * 1600.0/3600.0;
           //previous delta and a will be used for dealing with latency
           double delta_pre = j[1]["steering_angle"];
           double a_pre = j[1]["throttle"];
           //debug only
           std::cout << "previous state: px = "<< px <<", py = "<< py << std::endl;
+          std::cout << "previous state: psi = "<< psi <<", v = "<< v <<"[m/s]"<< std::endl;
           std::cout << "previous delta_pre = "<< delta_pre <<", a_pre = "<< a_pre<< std::endl;
           /*
           * TODO: Calculate steering angle and throttle using MPC.
@@ -107,6 +109,7 @@ int main() {
           const double Lf = 2.67;
           const int time_latency = 100; // latency in ms
           // coordinates transformation between map and car: shift and rotate
+          
           for (int i = 0; i< ptsx.size(); i++){
             //shift origin to (px, py)
             double shift_x = ptsx[i] - px;
@@ -137,7 +140,6 @@ int main() {
             // x0[1] remains...
             x0[2] -= v * delta_pre * dt_lat / Lf;
             x0[3] += a_pre * dt_lat;
-            // cte or x0[4] remains...
             x0[4] += v * sin(epsi) * dt_lat;
             x0[5] -= v * delta_pre * dt_lat / Lf;
           }
@@ -175,8 +177,8 @@ int main() {
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
-          int nums_points = 25;
-          double poly_incr = 2;
+          int nums_points = 20;
+          double poly_incr = 1;
           for(int i = 1; i< nums_points; i++){
             next_x_vals.push_back(poly_incr * i);
             next_y_vals.push_back(polyeval(coeffs, poly_incr * i));
