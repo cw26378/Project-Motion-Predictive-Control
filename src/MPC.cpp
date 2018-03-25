@@ -22,11 +22,11 @@ double dt = 0.1; //0.05
 const double Lf = 2.67;
 
 //ref setting for cost function
-double ref_cte = 0.0;
+double ref_cte = 0.0; //offset should be 0.0
 double ref_epsi = 0.0;
 
 // convert ref_v from miles per hour to m/s
-double ref_v = 60 * 1600 / 3600;;
+double ref_v = 60 * 1600 / 3600;; //60-70
 
 // single vector includes state variables of all N states of (x,y,psi,v, cte,epsi, delta, a)
 size_t x_start = 0;
@@ -55,14 +55,14 @@ class FG_eval {
     //fg[0] is the cost
     fg[0] = 0;
     //weight of different terms in the cost function;
-    double weight_cte = 600.0;//3000
-    double weight_epsi = 160.0; //1600
-    double weight_v = 2.0; //20
-    double weight_delta = 100.0; //1000
-    double weight_a = 5.0; //50
-    double wieght_cross = 100.0; //700
-    double weight_delta_step = 100.0; //1000
-    double weight_a_step = 1.0; //10
+    double weight_cte = 600.0;//400-1200
+    double weight_epsi = 200.0;//150-200.0;
+    double weight_v = 3.0;//3.0;
+    double weight_delta = 120.0;//120.0;
+    double weight_a = 5.0;//5.0;
+    double wieght_cross = 200.0; //200.0;
+    double weight_delta_step = 150; //150.0;
+    double weight_a_step = 1;//1.0;
     
     // basic cost function:
     for (int t = 0; t < N; t++){
@@ -121,12 +121,13 @@ class FG_eval {
       
       fg[1 + x_start + t] = x1 - (x0 + v0 * CppAD::cos(psi0) * dt);
       fg[1 + y_start + t] = y1 - (y0 + v0 * CppAD::sin(psi0) * dt);
-      fg[1 + psi_start + t] = psi1 - (psi0 - v0 * delta0 / Lf * dt);
+      //the steer angle need to * (-1) in main.cpp
+      fg[1 + psi_start + t] = psi1 - (psi0 + v0 * delta0 / Lf * dt); //fg[1 + psi_start + t] = psi1 - (psi0 - v0 * delta0 / Lf * dt);
       fg[1 + v_start + t] = v1 - (v0 + a0 * dt);
       fg[1 + cte_start + t] =
       cte1 - ((f0 - y0) + (v0 * CppAD::sin(epsi0) * dt));
       fg[1 + epsi_start + t] =
-      epsi1 - ((psi0 - psides0) - v0 * delta0 / Lf * dt);
+      epsi1 - ((psi0 - psides0) + v0 * delta0 / Lf * dt); //epsi1 - ((psi0 - psides0) - v0 * delta0 / Lf * dt);
     }
   }
 };
@@ -185,7 +186,7 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   //bounds for actuators are more limited: -25 deg  to 25 deg for steering, -1 to 1 for throttle.
   // The upper and lower limits of delta are set to -25 and 25
   for (int i = delta_start; i < a_start; i++) {
-    vars_lowerbound[i] = -0.436332;
+    vars_lowerbound[i] = -0.436332; // *Lf
     vars_upperbound[i] = 0.436332;
   }
   // Acceleration/decceleration upper and lower limits.

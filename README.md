@@ -1,6 +1,91 @@
 # CarND-Controls-MPC
 Self-Driving Car Engineer Nanodegree Program
+## Model Discription
+* The goal of this project is to provide viehcle control based on a predicted model which is calculated and updated using the map points in real time.  It conceptually involves two steps: obtaining the polynomial fitting of the current curvature and generate the predicted steering angle and throttle values based on the current state and the polynomial fitting.
+* The states of the car have 6 components: px, py, psi, v, cte cross-track error), and epsi (error in psi).
+* The actuators are steering (angle) and throttle (acceleration), represented by delta and a respectively in the code.
+* The update equations are summarized in the following (extracted from the lecture notes):
+./motion_update_eq.png
 
+* These motion update equations are used as constraints for the model optimizer.
+
+## Cost Function
+* The MPC uses IPOPT for finding the solution optimization. The ```fg``` is the vector of cost constraint, with  ```fg[0]``` being the cost while the rest of ```fg``` components are constraints. Specifically, ```fg[0]``` is defined as the following:
+```
+// basic cost function:
+for (int t = 0; t < N; t++){
+fg[0] += weight_cte * CppAD::pow((vars[t + cte_start] - ref_cte), 2);
+fg[0] += weight_epsi * CppAD::pow((vars[t + epsi_start] - ref_epsi), 2);
+fg[0] += weight_v * CppAD::pow((vars[t + v_start] - ref_v), 2);
+}
+
+// Minimize the use of actuators.
+for (int t = 0; t < N - 1; t++) {
+fg[0] += weight_delta * CppAD::pow(vars[delta_start + t], 2);
+fg[0] += weight_a * CppAD::pow(vars[a_start + t], 2);
+fg[0] += wieght_cross * CppAD::pow(vars[delta_start + t] * vars[v_start + t], 2);
+}
+// Minimize the value gap between sequential actuations.
+for (int t = 0; t < N - 2; t++) {
+fg[0] += weight_delta_step * CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+fg[0] += weight_a_step * CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
+}
+```
+* Note that most of the terms are standard cost functions of each variables, except that I have added a "cross term" of the actuator. This is inspired by viewing discussions in the Udacity forum. Intuitively trying to limit the turning at high speed or going too fast at sharp turns. Emprically this term works and appears to give me more margin on the ranges of other weight parameters.
+
+## Preprocessing/Coordinate Transformation
+In order to show the waypoints in real time with the car motion, it is helpful to transform waypoints from the map coordinate (global) to car coordinate (local). Such transformation is determined by the current psi and (px, py). And the waypoint curvature fitting that will be used for MPC is based on the transformed coordinates of way points.
+```
+// coordinates transformation between map and car: shift and rotate
+
+for (int i = 0; i< ptsx.size(); i++){
+//shift origin to (px, py)
+double shift_x = ptsx[i] - px;
+double shift_y = ptsy[i] - py;
+
+//rotate -psi degree
+ptsx[i] = shift_x * cos(-psi) - shift_y * sin(-psi);
+ptsy[i] = shift_x * sin(-psi) + shift_y * cos(-psi);
+}
+double* pointer_x = &ptsx[0];
+double* pointer_y = &ptsy[0];
+Eigen::Map<Eigen::VectorXd> ptsx_fit(pointer_x, 6);
+Eigen::Map<Eigen::VectorXd> ptsy_fit(pointer_y, 6);
+
+auto coeffs = polyfit(ptsx_fit, ptsy_fit, 3);
+```
+## Timestep Length, Elapsed Duration and Latency
+* The timestep length is set to be 0.1 for the speed range 50-70. and the duration is set to 10. At this tested speed, the set of timestep and duration gives satisfactory output. If time step length is too short, the processed trajectory from MPC is too short and therefore the car can still deviate from the desired position, while if timestep is too long, the model will not have enough information to make the best move in the immediate future moment. It seems that ```dt * N = 1``` second is a right place to be in.
+* The treatment of latency is helpful given that this project aims to going fast on track. I implemented the following code in the main function:
+```
+// dealing with latency
+const int time_latency = 100; // latency in ms
+double x0 = 0.0;
+double y0 = 0.0;
+double psi0 = 0.0;
+double v0 = v;
+if (time_latency > 0){
+double dt_lat = time_latency / 1000.0; // latency in seconds
+// in car coordinate psi = 0,  (only move along x-directin)
+// following the motion equation with psi = 0
+//x: cos(0) = 1
+x0 += v * dt_lat;
+//y: x0[1] remains... as sin(0) = 0
+y0 += 0;
+psi0 = 0 - v * delta_pre * dt_lat / Lf;
+v0 = v + a_pre * dt_lat;
+cte += v * sin(epsi) * dt_lat; //v * ..
+epsi -= v * delta_pre * dt_lat / Lf; //v * ..
+}
+Eigen::VectorXd state(6);
+state << x0, y0, psi0, v0, cte, epsi;
+``` 
+* In the car coordinate, the latency impact is formualized at px = 0, py = 0, psi = 0. previously obtained delta and a are used to calcualte the change of state variables due to latency.
+
+## Result
+./Result@65mph.mov
+
+* As shown in the video, the result shows that the car is able to complete the loop at 60-70 mph, but the position of car is not quite centered. I have actually spent quite a lot of time on tuning the weight parameters of the cost function, but centering the car still cannot be done without sacrifacing the performance at sharp turns. I have tested manually offset the cte_ref and indeed I can see the response. At this stage I am not clear if there is some bug in my code or I just need to further tune the weights in the cost functions.  
 ---
 
 ## Dependencies

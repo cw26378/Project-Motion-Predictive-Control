@@ -129,21 +129,27 @@ int main() {
           double cte = polyeval(coeffs, 0); // polyeval(coeffs, px) - py
           double epsi = - atan(coeffs[1]);  // psi - atan(coeffs[1]) + 2*px*coeffs[2]+3*px*px*coeff[3]
           
-          Eigen::VectorXd x0(6);
-          x0 << 0, 0, 0, v, cte, epsi;
-          
           // dealing with latency
+          double x0 = 0.0;
+          double y0 = 0.0;
+          double psi0 = 0.0;
+          double v0 = v;
           if (time_latency > 0){
             double dt_lat = time_latency / 1000.0; // latency in seconds
             // in car coordinate psi = 0,  (only move along x-directin)
-            x0[0] += v * dt_lat;
-            // x0[1] remains...
-            x0[2] -= v * delta_pre * dt_lat / Lf;
-            x0[3] += a_pre * dt_lat;
-            x0[4] += v * sin(epsi) * dt_lat;
-            x0[5] -= v * delta_pre * dt_lat / Lf;
+            // following the motion equation with psi = 0
+            //x: cos(0) = 1
+            x0 += v * dt_lat;
+            //y: x0[1] remains... as sin(0) = 0
+            y0 += 0;
+            psi0 = 0 - v * delta_pre * dt_lat / Lf;
+            v0 = v + a_pre * dt_lat;
+            cte += v * sin(epsi) * dt_lat; //v * ..
+            epsi -= v * delta_pre * dt_lat / Lf; //v * ..
           }
-          auto result_var = mpc.Solve(x0, coeffs);
+          Eigen::VectorXd state(6);
+          state << x0, y0, psi0, v0, cte, epsi;
+          auto result_var = mpc.Solve(state, coeffs);
           double steer_value = result_var[0];
           double throttle_value = result_var[1];
           //debug only
@@ -153,7 +159,7 @@ int main() {
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
           // Otherwise the values will be in between [-deg2rad(25), deg2rad(25] instead of [-1, 1].
-          msgJson["steering_angle"] = steer_value / (deg2rad(25)); // should Lf be divided here?
+          msgJson["steering_angle"] = -steer_value / (deg2rad(25)); // should Lf be divided here?
           msgJson["throttle"] = throttle_value;
 
           //Display the MPC predicted trajectory 
@@ -167,18 +173,18 @@ int main() {
             mpc_x_vals.push_back(result_var[i]);
             mpc_y_vals.push_back(result_var[i+1]);
           }
+
           msgJson["mpc_x"] = mpc_x_vals;
           msgJson["mpc_y"] = mpc_y_vals;
-
-
+          
           //Display the waypoints/reference line
           vector<double> next_x_vals;
           vector<double> next_y_vals;
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
-          int nums_points = 20;
-          double poly_incr = 1;
+          int nums_points = 30;
+          double poly_incr = 2;
           for(int i = 1; i< nums_points; i++){
             next_x_vals.push_back(poly_incr * i);
             next_y_vals.push_back(polyeval(coeffs, poly_incr * i));
