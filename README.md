@@ -5,7 +5,7 @@ Self-Driving Car Engineer Nanodegree Program
 * The states of the car have 6 components: px, py, psi, v, cte cross-track error), and epsi (error in psi).
 * The actuators are steering (angle) and throttle (acceleration), represented by delta and a respectively in the code.
 * The update equations are summarized in the following (extracted from the lecture notes):
-./motion_update_eq.png
+![alt text](./motion_update_eq.png)
 
 * These motion update equations are used as constraints for the model optimizer.
 
@@ -83,7 +83,7 @@ state << x0, y0, psi0, v0, cte, epsi;
 * In the car coordinate, the latency impact is formualized at px = 0, py = 0, psi = 0. previously obtained delta and a are used to calcualte the change of state variables due to latency.
 
 ## Result
-./Result@65mph.mov
+![alt text](https://www.youtube.com/watch?v=hI_fuTLUv5s&feature=youtu.be)
 
 * As shown in the video, the result shows that the car is able to complete the loop at 60-70 mph, but the position of car is not quite centered. I have actually spent quite a lot of time on tuning the weight parameters of the cost function, but centering the car still cannot be done without sacrifacing the performance at sharp turns. I have tested manually offset the cte_ref and indeed I can see the response. At this stage I am not clear if there is some bug in my code or I just need to further tune the weights in the cost functions.  
 ---
